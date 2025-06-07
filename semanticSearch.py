@@ -69,7 +69,7 @@ def search_faiss(query, model, index, df, top_k=5):
 # =============================
 
 def main():
-    df = load_cleaned_grants("cleaned_grants.csv")
+    df = load_cleaned_grants("RePORTER_PUB_C_FY2024.csv")
     corpus = build_corpus(df)
     embeddings, model = embed_corpus(corpus)
     index = build_faiss_index(embeddings)
