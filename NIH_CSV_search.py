@@ -1,5 +1,3 @@
-# nih_csv_opportunity_search.py
-
 import pandas as pd
 import requests
 from bs4 import BeautifulSoup
