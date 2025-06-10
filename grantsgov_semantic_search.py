@@ -7,11 +7,11 @@ import faiss
 # STEP 1: Query Grants.gov API
 # =============================
 
-def fetch_grantsgov_projects(query_text):
+def fetch_grantsgov_projects(query_text, limit = 1000):
     url = "https://api.grants.gov/v1/api/search2"
     payload = {
         "keyword": query_text,
-        # "rows": limit,
+        "rows": limit,
         "oppStatuses": "forecasted|posted"
     }
     response = requests.post(url, json=payload)
