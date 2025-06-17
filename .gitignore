@@ -172,3 +172,8 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+cleaned_grants.csv
+grant_embeddings.npy
+grantTest.html
+nih_embeddings.npy
+RePORTER_PRJ_C_FY2024.csv

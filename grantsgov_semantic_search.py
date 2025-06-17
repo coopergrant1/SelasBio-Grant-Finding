@@ -2,6 +2,7 @@ import requests
 import numpy as np
 from sentence_transformers import SentenceTransformer
 import faiss
+from bs4 import BeautifulSoup
 
 # =============================
 # STEP 1: Query Grants.gov API
@@ -12,12 +13,24 @@ def fetch_grantsgov_projects(query_text, limit = 1000):
     payload = {
         "keyword": query_text,
         "rows": limit,
-        "oppStatuses": "forecasted|posted"
+        "oppStatuses": "forecasted|posted",
     }
     response = requests.post(url, json=payload)
     if response.status_code != 200:
         raise Exception(f"Grants.gov API error: {response.status_code} - {response.text}")
     return response.json().get("data", {}).get("oppHits", [])
+
+def fetch_grant_summary(opp_id):
+    url = f"https://www.grants.gov/search-results-detail/{opp_id}"
+    try:
+        response = requests.get(url, timeout=5)
+        if response.status_code != 200:
+            return "No summary available."
+        soup = BeautifulSoup(response.text, 'html.parser')
+        main = soup.find("main") or soup.body
+        return main.get_text(separator=" ", strip=True)[:500]
+    except Exception:
+        return "No summary available."
 
 # =============================
 # STEP 2: Build Text Corpus
@@ -91,13 +104,14 @@ def main():
 
         results = search_projects(user_query, model, index, projects)
         for i, proj in enumerate(results, 1):
-            synopsis = proj.get("synopsis") or "No summary provided."
+            opportunity_id = proj.get("id")
+            synopsis = fetch_grant_summary(opportunity_id)
             print(
                 f"\n{i}. Title: {proj.get('title')}\n"
-                f"   Opportunity ID: {proj.get('opportunityId')}\n"
+                f"   Opportunity ID: {opportunity_id}\n"
                 f"   Agency: {proj.get('agencyCode')} | Status: {proj.get('oppStatus')}\n"
                 f"   Open: {proj.get('openDate')} — Close: {proj.get('closeDate')}\n"
-                f"   Summary: {synopsis[:300]}..."
+                f"   Summary: {synopsis[:500]}..."
             )
 
 if __name__ == "__main__":
