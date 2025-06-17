@@ -3,6 +3,8 @@ import numpy as np
 from sentence_transformers import SentenceTransformer
 import faiss
 from bs4 import BeautifulSoup
+from selenium import webdriver
+from selenium.webdriver.common.by import By
 
 # =============================
 # STEP 1: Query Grants.gov API
@@ -22,15 +24,31 @@ def fetch_grantsgov_projects(query_text, limit = 1000):
 
 def fetch_grant_summary(opp_id):
     url = f"https://www.grants.gov/search-results-detail/{opp_id}"
+
     try:
-        response = requests.get(url, timeout=5)
-        if response.status_code != 200:
-            return "No summary available."
-        soup = BeautifulSoup(response.text, 'html.parser')
-        main = soup.find("main") or soup.body
-        return main.get_text(separator=" ", strip=True)[:500]
+        options = webdriver.ChromeOptions()
+        options.add_argument("--headless")
+        driver = webdriver.Chrome(options=options)
+
+        driver.get(url)
+        driver.implicitly_wait(5)
+
+        rendered_html = driver.page_source
+        driver.quit()
+
+        soup = BeautifulSoup(rendered_html, 'html.parser')
+        tds = soup.select('td[data-v-f8e12040]')
+
+        for td in tds:
+            p = td.select_one('p')
+            if p and p.text.startswith('Summary:'):
+                return p.text.replace('Summary: ', '')
+
+        return "No summary available."
+
     except Exception:
         return "No summary available."
+
 
 # =============================
 # STEP 2: Build Text Corpus
