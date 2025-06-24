@@ -10,7 +10,7 @@ from selenium.webdriver.common.by import By
 # STEP 1: Query Grants.gov API
 # =============================
 
-def fetch_grantsgov_projects(query_text, limit = 1000):
+def fetch_grantsgov_projects(query_text, limit = 10000):
     url = "https://api.grants.gov/v1/api/search2"
     payload = {
         "keyword": query_text,
@@ -129,7 +129,7 @@ def main():
                 f"   Opportunity ID: {opportunity_id}\n"
                 f"   Agency: {proj.get('agencyCode')} | Status: {proj.get('oppStatus')}\n"
                 f"   Open: {proj.get('openDate')} — Close: {proj.get('closeDate')}\n"
-                f"   Summary: {synopsis[:500]}..."
+                f"   Summary: {synopsis[:1000]}..."
             )
 
 if __name__ == "__main__":
