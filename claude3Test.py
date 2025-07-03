@@ -1,28 +1,32 @@
 import boto3
+import json
 
-# Initialize Bedrock client
-client = boto3.client('bedrock-runtime', region_name='us-east-2')
+# Initialize Bedrock Runtime client
+client = boto3.client("bedrock-runtime", region_name="us-east-2")
 
-# Claude 3 Haiku model ID may vary by region; check Bedrock docs or console
-model_id = "anthropic.claude-3-haiku-20240307-v1:0"
-
-# Your prompt
-prompt_text = "Explain quantum computing simply."
-
-# Bedrock expects Anthropic-style message formatting
+# Prepare request payload in proper Anthropic format
 payload = {
-    "prompt": f"\n\nHuman: {prompt_text}\n\nAssistant:",
-    "max_tokens_to_sample": 500,
-    "temperature": 0.7
+    "anthropic_version": "bedrock-2023-05-31",
+    "messages": [
+        {"role": "user", "content": "what is the most recent information you currently have access to?"}
+    ],
+    "max_tokens": 1000
 }
 
-response = client.invoke_model(
-    modelId=model_id,
-    body=str(payload).replace("'", '"'),  # Bedrock expects double quotes in JSON
-    accept='application/json',
-    contentType='application/json'
+# Invoke model with streaming response
+response = client.invoke_model_with_response_stream(
+    modelId="us.anthropic.claude-3-haiku-20240307-v1:0",  # Must be Inference Profile ARN or valid ID
+    body=json.dumps(payload)
 )
 
-# Parse output
-output = response['body'].read().decode('utf-8')
-print(output)
+# Stream and print output
+print("\n📝 Claude 3 Response:")
+
+for event in response["body"]:
+    if "chunk" in event:
+        chunk_data = json.loads(event["chunk"]["bytes"].decode("utf-8"))
+        delta = chunk_data.get("delta", {})
+        content = delta.get("text", "")
+        print(content, end="", flush=True)
+
+print("\n✅ Done.")
