@@ -3,7 +3,8 @@ import urllib.parse
 import boto3
 import json
 import base64
-import fitz
+import PyPDF2
+import io
 
 # =============================
 # STEP 1: Query Grants.gov API
@@ -93,16 +94,6 @@ def lambda_handler(event, context):
             # Direct invocation
             body = event
         
-        if 'pdf_base64' in body:
-            try:
-                pdf_bytes = base64.b64decode(body['pdf_base64'])
-                doc = fitz.open(stream=pdf_bytes, filetype="pdf")
-                extracted_text = "\n".join(page.get_text() for page in doc)
-                body['problem'] = extracted_text[:1500]
-                body['solution'] = ""
-            except Exception as e:
-                return create_error_response(f"Failed to process PDF: {str(e)}")
-
         # Determine which step we're on
         step = body.get("step", "1")
         
@@ -165,24 +156,41 @@ def handle_step_1(body):
         
     except Exception as e:
         return create_error_response(f"Step 1 error: {str(e)}")
+    
+def extract_text_from_pdf(pdf_base64):
+    """Extract text from base64 encoded PDF"""
+    try:
+        # Decode base64 to bytes
+        pdf_bytes = base64.b64decode(pdf_base64)
+        
+        # Create PDF reader
+        pdf_file = io.BytesIO(pdf_bytes)
+        pdf_reader = PyPDF2.PdfReader(pdf_file)
+        
+        # Extract text from all pages
+        text = ""
+        for page in pdf_reader.pages:
+            text += page.extract_text() + "\n"
+        
+        return text.strip()
+    except Exception as e:
+        raise Exception(f"Error extracting PDF text: {str(e)}")
 
 def handle_step_2(body):
     """Step 2: Match grants to problem/solution using Claude"""
     print("Step 2 body:", body)
     try:
+        pdf_base64 = body.get("pdf_base64", "")
         problem_description = body.get("problem", "")
         solution_description = body.get("solution", "")
         grants = body.get("grants", [])
-        
-        if not problem_description or not solution_description:
-            return create_error_response("Both problem and solution descriptions are required for step 2")
         
         if not grants:
             return create_error_response("No grants data provided for matching")
         
         print(f"Step 2: Matching {len(grants)} grants to problem/solution")
         
-        # Format grants for Claude analysis
+        # Format grants for Claude analysis (limit to top 10 for better analysis)
         formatted_grants = "\n".join([
             f"{i+1}. Title: {grant.get('title', 'N/A')}\n"
             f"   Agency: {grant.get('agency', 'N/A')}\n"
@@ -190,34 +198,68 @@ def handle_step_2(body):
             f"   Eligibility: {grant.get('eligibility', 'N/A')[:100]}...\n"
             f"   Funding Type: {grant.get('funding_instrument', 'N/A')}\n"
             f"   Category: {grant.get('category', 'N/A')}\n"
-            for i, grant in enumerate(grants[:10])  # Limit to 10 for tokens
+            for i, grant in enumerate(grants[:10])  # Limit to 10 for better analysis
         ])
+
+        # Handle PDF upload
+        if pdf_base64:
+            print("Processing PDF upload...")
+            extracted_text = extract_text_from_pdf(pdf_base64)
+            
+            # Use extracted text as both problem and solution context
+            project_description = extracted_text
+
+            prompt = f"""You are an expert grants advisor. I will provide you with:
+                        1. A research proposal/project description (extracted from PDF)
+                        2. A list of available funding opportunities
+
+                        Based on the project description, analyze and recommend the top 3 most relevant grants.
+
+                        PROJECT DESCRIPTION:
+                        {project_description}
+
+                        AVAILABLE FUNDING OPPORTUNITIES:
+                        {formatted_grants}
+
+                        Please analyze these opportunities and provide:
+                        1. The top 3 most relevant grants for this project
+                        2. For each recommendation, explain:
+                        - Why this grant is a good match
+                        - How the project aligns with the grant's goals
+                        - Key eligibility requirements to note
+                        - Any strategic advice for the application
+
+                        Format your response with clear sections for each of the 3 recommendations."""
+            
+        else:
+            if not problem_description or not solution_description:
+                return create_error_response("Please provide either a PDF upload or both problem and solution descriptions")
         
-        prompt = f"""You are an expert grants advisor. I will provide you with:
-1. A problem description
-2. A solution description  
-3. A list of available funding opportunities
+            prompt = f"""You are an expert grants advisor. I will provide you with:
+                        1. A problem description
+                        2. A solution description  
+                        3. A list of available funding opportunities
 
-Based on these inputs, analyze and recommend the top 3 most relevant grants.
+                        Based on these inputs, analyze and recommend the top 3 most relevant grants.
 
-PROBLEM DESCRIPTION:
-{problem_description}
+                        PROBLEM DESCRIPTION:
+                        {problem_description}
 
-SOLUTION DESCRIPTION:
-{solution_description}
+                        SOLUTION DESCRIPTION:
+                        {solution_description}
 
-AVAILABLE FUNDING OPPORTUNITIES:
-{formatted_grants}
+                        AVAILABLE FUNDING OPPORTUNITIES:
+                        {formatted_grants}
 
-Please analyze these opportunities and provide:
-1. The top 3 most relevant grants for this problem/solution
-2. For each recommendation, explain:
-   - Why this grant is a good match
-   - How the problem/solution aligns with the grant's goals
-   - Key eligibility requirements to note
-   - Any strategic advice for the application
+                        Please analyze these opportunities and provide:
+                        1. The top 3 most relevant grants for this problem/solution
+                        2. For each recommendation, explain:
+                        - Why this grant is a good match
+                        - How the problem/solution aligns with the grant's goals
+                        - Key eligibility requirements to note
+                        - Any strategic advice for the application
 
-Format your response with clear sections for each of the 3 recommendations."""
+                        Format your response with clear sections for each of the 3 recommendations."""
 
         claude_response = query_claude(prompt, max_tokens=2000)
         

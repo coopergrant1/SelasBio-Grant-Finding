@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grant Finder - AI-Powered Grant Matching</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            padding: 40px;
+        }
+
+        .step-section {
+            background: #f8fafc;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+        }
+
+        .step-section.hidden {
+            display: none;
+        }
+
+        .step-section h2 {
+            color: #1f2937;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+        }
+
+        .step-indicator {
+            background: #4f46e5;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            display: inline-block;
+            margin-bottom: 15px;
+        }
+
+        .search-form {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .input-group label {
+            font-weight: 600;
+            color: #374151;
+            font-size: 1.1em;
+        }
+
+        .search-input, .textarea-input {
+            padding: 15px;
+            border: 2px solid #e5e7eb;
+            border-radius: 10px;
+            font-size: 1.1em;
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        .textarea-input {
+            min-height: 120px;
+            resize: vertical;
+            font-family: inherit;
+        }
+
+        .search-input:focus, .textarea-input:focus {
+            outline: none;
+            border-color: #4f46e5;
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+        }
+
+        .search-input::placeholder, .textarea-input::placeholder {
+            color: #9ca3af;
+        }
+
+        .search-btn {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1.1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            align-self: flex-start;
+        }
+
+        .search-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(79, 70, 229, 0.3);
+        }
+
+        .search-btn:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            color: #6b7280;
+        }
+
+        .spinner {
+            border: 4px solid #f3f4f6;
+            border-top: 4px solid #4f46e5;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .results-section {
+            display: none;
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+
+        .results-section h2 {
+            color: #1f2937;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+        }
+
+        .results-content {
+            background: #f9fafb;
+            border-radius: 10px;
+            padding: 20px;
+            border-left: 4px solid #4f46e5;
+        }
+
+        .results-content h3 {
+            color: #4f46e5;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+
+        .results-text {
+            line-height: 1.6;
+            color: #374151;
+            white-space: pre-wrap;
+        }
+
+        .results-meta {
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #e5e7eb;
+            color: #6b7280;
+            font-size: 0.9em;
+        }
+
+        .error-message {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            border-radius: 10px;
+            padding: 15px;
+            color: #dc2626;
+            margin-top: 20px;
+        }
+
+        .success-message {
+            background: #f0fdf4;
+            border: 1px solid #bbf7d0;
+            border-radius: 10px;
+            padding: 15px;
+            color: #16a34a;
+            margin-top: 20px;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: #6b7280;
+            border-top: 1px solid #e5e7eb;
+        }
+
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .header p {
+                font-size: 1em;
+            }
+            
+            .main-content {
+                padding: 20px;
+            }
+            
+            .step-section {
+                padding: 20px;
+            }
+        }
+        /* ==== Slider Styling ==== */
+        .styled-slider {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 10px;
+            background: linear-gradient(90deg, #4f46e5 0%, #7c3aed 100%);
+            border-radius: 5px;
+            outline: none;
+            transition: background 0.3s ease;
+            cursor: pointer;
+        }
+
+        .styled-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border: 3px solid #4f46e5;
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+            transition: transform 0.2s ease;
+        }
+
+        .styled-slider::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+        }
+
+        .styled-slider::-moz-range-thumb {
+            width: 20px;
+            height: 20px;
+            background: white;
+            border: 3px solid #4f46e5;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+
+        .styled-slider::-moz-range-thumb:hover {
+            transform: scale(1.1);
+        }
+
+        .styled-slider::-moz-range-track {
+            background: linear-gradient(90deg, #4f46e5 0%, #7c3aed 100%);
+            height: 10px;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Grant Finder</h1>
+            <p>AI-Powered Grant Matching with Claude 3</p>
+        </div>
+
+        <div class="main-content">
+            <!-- Step 1: Keyword Search -->
+            <div class="step-section" id="step1Section">
+                <div class="step-indicator">Step 1 of 2</div>
+                <h2>Search for Grants</h2>
+                <form class="search-form" id="step1Form">
+                    <div class="input-group">
+                        <label for="queryInput">Research Topic or Keywords:</label>
+                        <input 
+                            type="text" 
+                            id="queryInput" 
+                            class="search-input" 
+                            placeholder="Enter your research area (e.g., 'cancer research', 'renewable energy', 'education innovation')"
+                            required
+                        >
+                    </div>
+                    <div class="input-group">
+                        <label for="limitSlider">Number of Grants to Fetch: <span id="limitValue">30</span></label>
+                        <input 
+                            type="range" 
+                            id="limitSlider" 
+                            min="0" 
+                            max="200" 
+                            value="30" 
+                            step="5"
+                            class="styled-slider"
+                        >
+                    </div>
+                    <button type="submit" class="search-btn" id="step1Btn">
+                        Search Grants
+                    </button>
+                </form>
+            </div>
+
+            <!-- Step 2: Problem/Solution -->
+            <div class="step-section hidden" id="step2Section">
+                <div class="step-indicator">Step 2 of 2</div>
+                <h2>Describe Your Project</h2>
+                <form class="search-form" id="step2Form">
+                    <div class="input-group">
+                        <label for="problemInput">Problem Statement:</label>
+                        <textarea 
+                            id="problemInput" 
+                            class="textarea-input" 
+                            placeholder="Describe the problem your research or project aims to address. Be specific about the current challenges, gaps, or needs in your field."
+                            
+                        ></textarea>
+                    </div>
+                    <div class="input-group">
+                        <label for="solutionInput">Proposed Solution:</label>
+                        <textarea 
+                            id="solutionInput" 
+                            class="textarea-input" 
+                            placeholder="Describe your proposed solution, methodology, or approach. Explain how your project will address the problem and what outcomes you expect."
+                            
+                        ></textarea>
+                    </div>
+                    <div class="input-group">
+                        <label for="pdfUpload">Or Upload Proposal (PDF):</label>
+                        <input 
+                            type="file" 
+                            id="pdfUpload" 
+                            accept="application/pdf"
+                            class="search-input"
+                        >
+                    </div>
+                    <button type="submit" class="search-btn" id="step2Btn">
+                        Get AI Recommendations
+                    </button>
+                </form>
+            </div>
+
+            <div class="loading" id="loadingSection">
+                <div class="spinner"></div>
+                <p id="loadingText">Processing your request...</p>
+            </div>
+
+            <div class="results-section" id="resultsSection">
+                <h2 id="resultsTitle">Results</h2>
+                <div class="results-content">
+                    <h3 id="resultsSubtitle">Analysis:</h3>
+                    <div class="results-text" id="resultsText"></div>
+                    <div class="results-meta" id="resultsMeta"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>Powered by AWS Lambda, Bedrock, and Claude 3 | © 2025 Grant Finder</p>
+        </div>
+    </div>
+
+    <script>
+        const API_ENDPOINT = 'https://00ykdb7rz6.execute-api.us-east-2.amazonaws.com/prod';
+        
+        let currentGrants = [];
+        let currentQuery = '';
+
+        document.getElementById('limitSlider').addEventListener('input', function() {
+            document.getElementById('limitValue').textContent = this.value;
+        });
+
+        // Step 1 Form Handler
+        document.getElementById('step1Form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const query = document.getElementById('queryInput').value.trim();
+            if (!query) return;
+            
+            currentQuery = query;
+            
+            const step1Btn = document.getElementById('step1Btn');
+            const loadingSection = document.getElementById('loadingSection');
+            const resultsSection = document.getElementById('resultsSection');
+            const loadingText = document.getElementById('loadingText');
+            
+            // Show loading state
+            step1Btn.disabled = true;
+            step1Btn.textContent = 'Searching...';
+            loadingText.textContent = 'Searching grants database...';
+            loadingSection.style.display = 'block';
+            resultsSection.style.display = 'none';
+            
+            try {
+                const limit = parseInt(document.getElementById('limitSlider').value, 10);
+
+                const response = await fetch(API_ENDPOINT, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ 
+                    step: "1",
+                    query: query,
+                    limit: limit
+                })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                // Store grants for step 2
+                currentGrants = data.grants || [];
+                
+                // Show success message and proceed to step 2
+                loadingSection.style.display = 'none';
+                resultsSection.style.display = 'block';
+                
+                document.getElementById('resultsTitle').textContent = 'Step 1 Complete';
+                document.getElementById('resultsSubtitle').textContent = 'Grants Found:';
+                document.getElementById('resultsText').textContent = data.message || `Found ${data.total_found} grants`;
+                document.getElementById('resultsMeta').textContent = `Ready for step 2 - please describe your problem and solution below.`;
+                
+                // Show step 2 form
+                document.getElementById('step2Section').classList.remove('hidden');
+                
+            } catch (error) {
+                console.error('Error:', error);
+                
+                loadingSection.style.display = 'none';
+                resultsSection.style.display = 'block';
+                document.getElementById('resultsTitle').textContent = 'Error';
+                document.getElementById('resultsSubtitle').textContent = 'Something went wrong:';
+                document.getElementById('resultsText').innerHTML = `
+                    <div class="error-message">
+                        <strong>Error:</strong> ${error.message}
+                    </div>
+                `;
+                document.getElementById('resultsMeta').textContent = '';
+            }
+            
+            // Reset button
+            step1Btn.disabled = false;
+            step1Btn.textContent = 'Search Grants';
+        });
+
+        // Step 2 Form Handler
+        document.getElementById('step2Form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const problem = document.getElementById('problemInput').value.trim();
+            const solution = document.getElementById('solutionInput').value.trim();
+            const fileInput = document.getElementById('pdfUpload');
+            const file = fileInput.files[0];
+            
+            // if (!problem || !solution) {
+            //     alert('Please fill in both the problem and solution descriptions.');
+            //     return;
+            // }
+            
+            const step2Btn = document.getElementById('step2Btn');
+            const loadingSection = document.getElementById('loadingSection');
+            const resultsSection = document.getElementById('resultsSection');
+            const loadingText = document.getElementById('loadingText');
+            
+            // Show loading state
+            step2Btn.disabled = true;
+            step2Btn.textContent = 'Analyzing...';
+            loadingText.textContent = 'Claude is analyzing your project against available grants...';
+            loadingSection.style.display = 'block';
+            resultsSection.style.display = 'none';
+            
+            try {
+                let requestBody = {
+                    step: "2",
+                    problem: problem,
+                    solution: solution,
+                    grants: currentGrants
+                };
+
+                // Only if PDF was uploaded
+                if (file && file.type === "application/pdf") {
+                    const base64 = await fileToBase64(file);
+                    requestBody = {
+                        step: "2",
+                        pdf_base64: base64,
+                        grants: currentGrants
+                    };
+                }
+
+                const response = await fetch(API_ENDPOINT, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestBody)
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                // Display Claude's analysis
+                loadingSection.style.display = 'none';
+                resultsSection.style.display = 'block';
+                
+                document.getElementById('resultsTitle').textContent = 'AI Grant Recommendations';
+                document.getElementById('resultsSubtitle').textContent = 'Claude\'s Analysis:';
+                document.getElementById('resultsText').textContent = data.claude_response || 'No recommendations available.';
+                document.getElementById('resultsMeta').textContent = `Analyzed ${data.total_analyzed} grants for your project`;
+                
+            } catch (error) {
+                console.error('Error:', error);
+                
+                loadingSection.style.display = 'none';
+                resultsSection.style.display = 'block';
+                document.getElementById('resultsTitle').textContent = 'Error';
+                document.getElementById('resultsSubtitle').textContent = 'Something went wrong:';
+                document.getElementById('resultsText').innerHTML = `
+                    <div class="error-message">
+                        <strong>Error:</strong> ${error.message}
+                    </div>
+                `;
+                document.getElementById('resultsMeta').textContent = '';
+            }
+            
+            // Reset button
+            step2Btn.disabled = false;
+            step2Btn.textContent = 'Get AI Recommendations';
+        });
+
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    const base64String = reader.result.split(',')[1]; // Remove `data:application/pdf;base64,`
+                    resolve(base64String);
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+    </script>
+</body>
+</html>

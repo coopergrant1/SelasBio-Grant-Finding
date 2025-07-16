@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About - Grant Finder</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+            position: relative;
+        }
+
+        .nav-link {
+            position: absolute;
+            top: 20px;
+            left: 30px;
+            color: white;
+            text-decoration: none;
+            font-weight: 600;
+            padding: 10px 20px;
+            border-radius: 25px;
+            background: rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .nav-link:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .main-content {
+            padding: 40px;
+        }
+
+        .section {
+            background: #f8fafc;
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .section h2 {
+            color: #1f2937;
+            margin-bottom: 20px;
+            font-size: 1.8em;
+            border-bottom: 3px solid #4f46e5;
+            padding-bottom: 10px;
+        }
+
+        .section h3 {
+            color: #4f46e5;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+
+        .section p {
+            line-height: 1.8;
+            color: #374151;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 25px;
+            margin-top: 20px;
+        }
+
+        .feature-card {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+        }
+
+        .feature-icon {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 15px;
+        }
+
+        .feature-icon::before {
+            content: '🎯';
+            font-size: 24px;
+        }
+
+        .feature-card:nth-child(2) .feature-icon::before {
+            content: '🤖';
+        }
+
+        .feature-card:nth-child(3) .feature-icon::before {
+            content: '⚡';
+        }
+
+        .feature-card:nth-child(4) .feature-icon::before {
+            content: '📊';
+        }
+
+        .feature-card h4 {
+            color: #1f2937;
+            margin-bottom: 10px;
+            font-size: 1.2em;
+        }
+
+        .feature-card p {
+            color: #6b7280;
+            font-size: 0.95em;
+            margin-bottom: 0;
+        }
+
+        .company-highlight {
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0e7ff 100%);
+            border: 2px solid #4f46e5;
+            border-radius: 15px;
+            padding: 30px;
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .company-logo {
+            font-size: 2em;
+            font-weight: bold;
+            color: #4f46e5;
+            margin-bottom: 15px;
+        }
+
+        .company-link {
+            display: inline-block;
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+            color: white;
+            padding: 12px 30px;
+            border-radius: 25px;
+            text-decoration: none;
+            font-weight: 600;
+            margin-top: 15px;
+            transition: all 0.3s ease;
+        }
+
+        .company-link:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(79, 70, 229, 0.3);
+        }
+
+        .contact-section {
+            background: linear-gradient(135deg, #1f2937 0%, #374151 100%);
+            color: white;
+            text-align: center;
+        }
+
+        .contact-section h2 {
+            color: white;
+            border-bottom: 3px solid #4f46e5;
+        }
+
+        .contact-info {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 30px;
+            margin-top: 20px;
+        }
+
+        .contact-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1.1em;
+        }
+
+        .contact-icon {
+            width: 40px;
+            height: 40px;
+            background: rgba(79, 70, 229, 0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .email-link {
+            color: #60a5fa;
+            text-decoration: none;
+            transition: color 0.3s ease;
+        }
+
+        .email-link:hover {
+            color: #3b82f6;
+        }
+
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: #6b7280;
+            border-top: 1px solid #e5e7eb;
+            background: white;
+        }
+
+        @media (max-width: 768px) {
+            .header {
+                padding: 20px;
+            }
+            
+            .nav-link {
+                position: static;
+                display: inline-block;
+                margin-bottom: 20px;
+            }
+            
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .header p {
+                font-size: 1em;
+            }
+            
+            .main-content {
+                padding: 20px;
+            }
+            
+            .section {
+                padding: 20px;
+            }
+            
+            .feature-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .contact-info {
+                flex-direction: column;
+                gap: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <a href="index.html" class="nav-link">← Back to App</a>
+            <h1>About Grant Finder</h1>
+            <p>Revolutionizing grant discovery through artificial intelligence</p>
+        </div>
+
+        <div class="main-content">
+            <div class="section">
+                <h2>Our Mission</h2>
+                <p>
+                    Grant Finder is designed to bridge the gap between innovative research projects and the funding opportunities they need to succeed. We understand that finding the right grants can be overwhelming, time-consuming, and often feels like searching for a needle in a haystack.
+                </p>
+                <p>
+                    Our AI-powered platform leverages advanced natural language processing through Claude 3 to analyze thousands of grant opportunities and match them precisely to your research goals, methodology, and institutional requirements.
+                </p>
+            </div>
+
+            <div class="section">
+                <h2>How It Works</h2>
+                <div class="feature-grid">
+                    <div class="feature-card">
+                        <div class="feature-icon"></div>
+                        <h4>Smart Search</h4>
+                        <p>Enter your research keywords and we'll fetch the most relevant grants from Grants.gov's comprehensive database in real-time.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon"></div>
+                        <h4>AI Analysis</h4>
+                        <p>Claude 3 analyzes your project description against available opportunities, understanding context and nuance beyond simple keyword matching.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon"></div>
+                        <h4>Instant Matching</h4>
+                        <p>Get personalized recommendations in seconds, not hours. Our system processes hundreds of grants to find your best matches.</p>
+                    </div>
+                    <div class="feature-card">
+                        <div class="feature-icon"></div>
+                        <h4>Strategic Insights</h4>
+                        <p>Receive detailed explanations of why each grant is a good fit, plus strategic advice for strengthening your application.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section">
+                <h2>Technology Stack</h2>
+                <p>
+                    Grant Finder is built on cutting-edge cloud infrastructure to ensure reliability, scalability, and speed:
+                </p>
+                <ul style="margin-left: 20px; color: #374151; line-height: 1.8;">
+                    <li><strong>AWS Lambda:</strong> Serverless backend processing for instant scalability</li>
+                    <li><strong>Amazon Bedrock:</strong> Access to Claude 3 Haiku for advanced AI analysis</li>
+                    <li><strong>Grants.gov API:</strong> Real-time access to federal funding opportunities</li>
+                    <li><strong>Modern Web Technologies:</strong> Responsive design that works on any device</li>
+                </ul>
+            </div>
+
+            <div class="section">
+                <h2>Parent Company</h2>
+                <div class="company-highlight">
+                    <div class="company-logo">SelasBio</div>
+                    <p>
+                        Grant Finder is proudly developed by SelasBio, a biotechnology company dedicated to advancing scientific research through innovative digital solutions. SelasBio specializes in creating tools that empower researchers, streamline workflows, and accelerate the path from discovery to application.
+                    </p>
+                    <p>
+                        With deep expertise in both life sciences and technology, SelasBio understands the unique challenges facing today's researchers and is committed to building solutions that make a real difference in the scientific community.
+                    </p>
+                    <a href="https://selasbio.com/" target="_blank" class="company-link">Visit SelasBio →</a>
+                </div>
+            </div>
+
+            <div class="section contact-section">
+                <h2>Contact Us</h2>
+                <p>
+                    Have questions, suggestions, or need support? We'd love to hear from you.
+                </p>
+                <div class="contact-info">
+                    <div class="contact-item">
+                        <div class="contact-icon">📧</div>
+                        <span>Email: <a href="mailto:support@grantfinder.example.com" class="email-link">support@grantfinder.example.com</a></span>
+                    </div>
+                    <div class="contact-item">
+                        <div class="contact-icon">🌐</div>
+                        <span>Visit us at <a href="https://selasbio.com/" target="_blank" class="email-link">selasbio.com</a></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>Powered by AWS Lambda, Bedrock, and Claude 3 | © 2025 SelasBio - Grant Finder</p>
+        </div>
+    </div>
+</body>
+</html>

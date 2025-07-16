@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Grant Finder - Debug Mode</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .debug-info {
+            background: #e8f4f8;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            border-left: 4px solid #2196F3;
+        }
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+        .success {
+            background: #e8f5e8;
+            color: #2e7d32;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        button {
+            background: #4CAF50;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 10px 0;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        button:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+        }
+        .log {
+            background: #f8f8f8;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 15px;
+            white-space: pre-wrap;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Grant Finder - Debug Mode</h1>
+        
+        <div class="debug-info">
+            <h3>Debug Information:</h3>
+            <p><strong>Current API Endpoint:</strong> <span id="currentEndpoint"></span></p>
+            <p><strong>Browser:</strong> <span id="browserInfo"></span></p>
+            <p><strong>CORS Support:</strong> <span id="corsSupport"></span></p>
+        </div>
+
+        <div>
+            <h3>Update API Endpoint:</h3>
+            <input type="text" id="apiEndpoint" placeholder="Enter your API Gateway URL">
+            <button onclick="updateEndpoint()">Update Endpoint</button>
+        </div>
+
+        <div>
+            <h3>Test Step 1 - Keyword Search:</h3>
+            <input type="text" id="queryInput" placeholder="Enter search query" value="cancer research">
+            <button onclick="testStep1()" id="step1Btn">Test Step 1</button>
+        </div>
+
+        <div>
+            <h3>Test Step 2 - Problem/Solution:</h3>
+            <textarea id="problemInput" placeholder="Problem description" rows="3">Current cancer treatments have severe side effects and limited effectiveness.</textarea>
+            <textarea id="solutionInput" placeholder="Solution description" rows="3">We propose to develop a novel targeted therapy using AI-designed peptides.</textarea>
+            <button onclick="testStep2()" id="step2Btn">Test Step 2</button>
+        </div>
+
+        <div>
+            <h3>Direct Lambda Test:</h3>
+            <button onclick="testLambdaConnection()">Test Lambda Connection</button>
+        </div>
+
+        <div id="results"></div>
+        <div class="log" id="debugLog"></div>
+    </div>
+
+    <script>
+        // Default API endpoint - UPDATE THIS
+        let API_ENDPOINT = 'https://00ykdb7rz6.execute-api.us-east-2.amazonaws.com/prod';
+        
+        // Sample grants data for step 2 testing
+        const sampleGrants = [
+            {
+                "id": 0,
+                "title": "NIH Small Business Innovation Research (SBIR)",
+                "agency": "National Institutes of Health",
+                "description": "The NIH SBIR program supports domestic small businesses that engage in research and development with the potential for commercialization.",
+                "eligibility": "Small business concerns",
+                "funding_instrument": "Grant",
+                "category": "Health"
+            }
+        ];
+
+        // Debug logging function
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const logElement = document.getElementById('debugLog');
+            const prefix = type === 'error' ? '❌' : type === 'success' ? '✅' : 'ℹ️';
+            logElement.textContent += `[${timestamp}] ${prefix} ${message}\n`;
+            logElement.scrollTop = logElement.scrollHeight;
+            console.log(`[${timestamp}] ${message}`);
+        }
+
+        // Initialize debug info
+        function initDebugInfo() {
+            document.getElementById('currentEndpoint').textContent = API_ENDPOINT;
+            document.getElementById('browserInfo').textContent = navigator.userAgent.split(' ').pop();
+            document.getElementById('corsSupport').textContent = typeof fetch !== 'undefined' ? 'Supported' : 'Not supported';
+            document.getElementById('apiEndpoint').value = API_ENDPOINT;
+            log('Debug mode initialized');
+        }
+
+        // Update API endpoint
+        function updateEndpoint() {
+            const newEndpoint = document.getElementById('apiEndpoint').value.trim();
+            if (newEndpoint) {
+                API_ENDPOINT = newEndpoint;
+                document.getElementById('currentEndpoint').textContent = API_ENDPOINT;
+                log(`API endpoint updated to: ${API_ENDPOINT}`);
+            }
+        }
+
+        // Test Step 1
+        async function testStep1() {
+            const query = document.getElementById('queryInput').value.trim();
+            if (!query) {
+                log('No query provided', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('step1Btn');
+            btn.disabled = true;
+            btn.textContent = 'Testing...';
+
+            log(`Testing Step 1 with query: "${query}"`);
+            log(`Making request to: ${API_ENDPOINT}`);
+
+            const payload = {
+                step: "1",
+                query: query
+            };
+
+            log(`Request payload: ${JSON.stringify(payload, null, 2)}`);
+
+            try {
+                const response = await fetch(API_ENDPOINT, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                log(`Response status: ${response.status} ${response.statusText}`);
+                log(`Response headers: ${JSON.stringify(Object.fromEntries(response.headers), null, 2)}`);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                log(`Response data: ${JSON.stringify(data, null, 2)}`, 'success');
+                
+                showResults('Step 1 Success', JSON.stringify(data, null, 2), 'success');
+
+            } catch (error) {
+                log(`Step 1 Error: ${error.message}`, 'error');
+                log(`Error stack: ${error.stack}`, 'error');
+                showResults('Step 1 Error', error.message, 'error');
+            }
+
+            btn.disabled = false;
+            btn.textContent = 'Test Step 1';
+        }
+
+        // Test Step 2
+        async function testStep2() {
+            const problem = document.getElementById('problemInput').value.trim();
+            const solution = document.getElementById('solutionInput').value.trim();
+
+            if (!problem || !solution) {
+                log('Problem or solution missing', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('step2Btn');
+            btn.disabled = true;
+            btn.textContent = 'Testing...';
+
+            log('Testing Step 2 with problem/solution');
+
+            const payload = {
+                step: "2",
+                problem: problem,
+                solution: solution,
+                grants: sampleGrants
+            };
+
+            log(`Request payload: ${JSON.stringify(payload, null, 2)}`);
+
+            try {
+                const response = await fetch(API_ENDPOINT, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                log(`Response status: ${response.status} ${response.statusText}`);
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+                log(`Response data: ${JSON.stringify(data, null, 2)}`, 'success');
+                
+                showResults('Step 2 Success', JSON.stringify(data, null, 2), 'success');
+
+            } catch (error) {
+                log(`Step 2 Error: ${error.message}`, 'error');
+                showResults('Step 2 Error', error.message, 'error');
+            }
+
+            btn.disabled = false;
+            btn.textContent = 'Test Step 2';
+        }
+
+        // Test Lambda connection
+        async function testLambdaConnection() {
+            log('Testing basic Lambda connection...');
+            
+            try {
+                const response = await fetch(API_ENDPOINT, {
+                    method: 'OPTIONS',
+                    headers: {
+                        'Origin': window.location.origin
+                    }
+                });
+
+                log(`OPTIONS request status: ${response.status}`);
+                log(`CORS headers: ${JSON.stringify(Object.fromEntries(response.headers), null, 2)}`);
+
+                if (response.ok) {
+                    log('Lambda connection successful!', 'success');
+                } else {
+                    log('Lambda connection failed', 'error');
+                }
+
+            } catch (error) {
+                log(`Connection test error: ${error.message}`, 'error');
+            }
+        }
+
+        // Show results
+        function showResults(title, content, type) {
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = `
+                <div class="${type}">
+                    <h3>${title}</h3>
+                    <pre>${content}</pre>
+                </div>
+            `;
+        }
+
+        // Initialize on page load
+        window.onload = initDebugInfo;
+    </script>
+</body>
+</html>
