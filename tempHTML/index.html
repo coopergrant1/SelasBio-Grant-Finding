@@ -32,6 +32,26 @@
             color: white;
             padding: 40px;
             text-align: center;
+            position: relative;
+        }
+
+        .nav-link {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            color: white;
+            text-decoration: none;
+            font-weight: 600;
+            padding: 10px 20px;
+            border-radius: 25px;
+            background: rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .nav-link:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateY(-2px);
         }
 
         .header h1 {
@@ -233,6 +253,16 @@
         }
 
         @media (max-width: 768px) {
+            .header {
+                padding: 20px;
+            }
+            
+            .nav-link {
+                position: static;
+                display: inline-block;
+                margin-bottom: 20px;
+            }
+            
             .header h1 {
                 font-size: 2em;
             }
@@ -301,6 +331,7 @@
 <body>
     <div class="container">
         <div class="header">
+            <a href="about.html" class="nav-link">About</a>
             <h1>Grant Finder</h1>
             <p>AI-Powered Grant Matching with Claude 3</p>
         </div>
