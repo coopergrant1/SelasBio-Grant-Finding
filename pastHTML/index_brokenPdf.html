@@ -393,6 +393,15 @@
                             
                         ></textarea>
                     </div>
+                    <div class="input-group">
+                        <label for="pdfUpload">Or Upload Proposal (PDF):</label>
+                        <input 
+                            type="file" 
+                            id="pdfUpload" 
+                            accept="application/pdf"
+                            class="search-input"
+                        >
+                    </div>
                     <button type="submit" class="search-btn" id="step2Btn">
                         Get AI Recommendations
                     </button>
@@ -516,11 +525,13 @@
             
             const problem = document.getElementById('problemInput').value.trim();
             const solution = document.getElementById('solutionInput').value.trim();
+            const fileInput = document.getElementById('pdfUpload');
+            const file = fileInput.files[0];
             
-            if (!problem || !solution) {
-                alert('Please fill in both the problem and solution descriptions.');
-                return;
-            }
+            // if (!problem || !solution) {
+            //     alert('Please fill in both the problem and solution descriptions.');
+            //     return;
+            // }
             
             const step2Btn = document.getElementById('step2Btn');
             const loadingSection = document.getElementById('loadingSection');
@@ -535,17 +546,27 @@
             resultsSection.style.display = 'none';
             
             try {
+                let requestBody = {
+                    step: "2",
+                    problem: problem,
+                    solution: solution,
+                    grants: currentGrants
+                };
+
+                // Only if PDF was uploaded
+                if (file && file.type === "application/pdf") {
+                    const base64 = await fileToBase64(file);
+                    requestBody = {
+                        step: "2",
+                        pdf_base64: base64,
+                        grants: currentGrants
+                    };
+                }
+
                 const response = await fetch(API_ENDPOINT, {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ 
-                        step: "2",
-                        problem: problem,
-                        solution: solution,
-                        grants: currentGrants
-                    })
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestBody)
                 });
                 
                 if (!response.ok) {
@@ -586,6 +607,18 @@
             step2Btn.disabled = false;
             step2Btn.textContent = 'Get AI Recommendations';
         });
+
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    const base64String = reader.result.split(',')[1]; // Remove `data:application/pdf;base64,`
+                    resolve(base64String);
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
     </script>
 </body>
 </html>
