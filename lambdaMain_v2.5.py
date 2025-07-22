@@ -179,12 +179,66 @@ def lambda_handler(event, context):
         elif step == "2":
             # STEP 2: Match grants to problem/solution
             return handle_step_2(body)
+        elif step == "get_saved_searches":
+            # NEW: Get saved searches
+            return handle_get_saved_searches()
+        elif step == "get_search_details":
+            # NEW: Get search details
+            return handle_get_search_details(body)
+        elif step == "delete_search":
+            # NEW: Delete search
+            return handle_delete_search(body)
         else:
             return create_error_response("Invalid step parameter")
     
     except Exception as e:
         print(f"Lambda error: {str(e)}")
         return create_error_response(str(e))
+    
+def handle_get_saved_searches():
+    """Handle getting saved searches"""
+    try:
+        saved_searches = get_saved_searches()
+        return create_success_response({
+            "saved_searches": saved_searches,
+            "total": len(saved_searches)
+        })
+    except Exception as e:
+        return create_error_response(f"Error getting saved searches: {str(e)}")
+
+def handle_get_search_details(body):
+    """Handle getting search details"""
+    try:
+        search_id = body.get("search_id")
+        if not search_id:
+            return create_error_response("Search ID is required")
+        
+        search_details = get_search_details(search_id)
+        if not search_details:
+            return create_error_response("Search not found")
+        
+        return create_success_response({
+            "search_details": search_details
+        })
+    except Exception as e:
+        return create_error_response(f"Error getting search details: {str(e)}")
+
+def handle_delete_search(body):
+    """Handle deleting a search"""
+    try:
+        search_id = body.get("search_id")
+        if not search_id:
+            return create_error_response("Search ID is required")
+        
+        success = delete_search(search_id)
+        if not success:
+            return create_error_response("Search not found or could not be deleted")
+        
+        return create_success_response({
+            "message": "Search deleted successfully"
+        })
+    except Exception as e:
+        return create_error_response(f"Error deleting search: {str(e)}")
 
 def handle_step_1(body):
     """Step 1: Fetch grants based on keyword search"""
