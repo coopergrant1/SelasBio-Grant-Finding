@@ -2,12 +2,12 @@ import urllib.request
 import urllib.parse
 import boto3
 import json
-from selenium import webdriver
-from bs4 import BeautifulSoup
+import uuid
+import time
 
 # adding actual grant information + links? to claude output not just raw ai text
 
-# v 2 has partial fetch summary logic but not complete and imports are probably wrong whoops
+# v 2.5 has saved searches logic but no fetch summary
 
 # =============================
 # STEP 1: Query Grants.gov API
@@ -52,34 +52,6 @@ def fetch_grantsgov_projects(query_text, limit=30):
     except Exception as e:
         raise Exception(f"Error fetching grants: {str(e)}")
 
-def fetch_grant_summary(opp_id):
-    url = f"https://www.grants.gov/search-results-detail/{opp_id}"
-
-    try:
-        options = webdriver.ChromeOptions()
-        options.add_argument("--headless")
-        driver = webdriver.Chrome(options=options)
-
-        driver.get(url)
-        driver.implicitly_wait(5)
-
-        rendered_html = driver.page_source
-        driver.quit()
-
-        soup = BeautifulSoup(rendered_html, 'html.parser')
-        tds = soup.select('td[data-v-f8e12040]')
-
-        for i, td in enumerate(tds):
-            if td.get_text(strip=True) == "Description:":
-                if i + 1 < len(tds):
-                    summary_td = tds[i + 1]
-                    return summary_td.get_text(strip=True)
-
-        return "No summary available."
-
-    except Exception:
-        return "No summary available."
-
 # =============================
 # STEP 2: Claude 3 Bedrock Logic
 # =============================
@@ -110,6 +82,79 @@ def query_claude(prompt_text, region="us-east-2", max_tokens=1500):
     except Exception as e:
         print(f"Error querying Claude: {str(e)}")
         return f"Error: {str(e)}"
+    
+# =============================
+# STEP 3: Saved Search Logic
+# =============================
+
+def save_search_to_memory(query, grants_data, problem=None, solution=None, claude_response=None):
+    """Save search data to in-memory storage (replace with DynamoDB in production)"""
+    search_id = str(uuid.uuid4())
+    timestamp = int(time.time() * 1000)  # milliseconds
+    
+    search_data = {
+        "id": search_id,
+        "query": query,
+        "timestamp": timestamp,
+        "grants_found": len(grants_data) if grants_data else 0,
+        "grants_data": grants_data,
+        "problem_statement": problem,
+        "solution_description": solution,
+        "claude_response": claude_response,
+        "analysis_completed": bool(claude_response)
+    }
+    
+    # In production, save to DynamoDB instead
+    # For now, we'll use a global variable (not recommended for production)
+    if not hasattr(save_search_to_memory, "searches"):
+        save_search_to_memory.searches = []
+    
+    save_search_to_memory.searches.append(search_data)
+    return search_id
+
+def get_saved_searches():
+    """Get all saved searches"""
+    if not hasattr(save_search_to_memory, "searches"):
+        return []
+    
+    # Return searches sorted by timestamp (newest first)
+    searches = save_search_to_memory.searches.copy()
+    searches.sort(key=lambda x: x['timestamp'], reverse=True)
+    
+    # Return simplified data for list view
+    return [
+        {
+            "id": search["id"],
+            "query": search["query"],
+            "timestamp": search["timestamp"],
+            "grants_found": search["grants_found"],
+            "problem_statement": search.get("problem_statement", ""),
+            "analysis_completed": search["analysis_completed"]
+        }
+        for search in searches
+    ]
+
+def get_search_details(search_id):
+    """Get detailed data for a specific search"""
+    if not hasattr(save_search_to_memory, "searches"):
+        return None
+    
+    for search in save_search_to_memory.searches:
+        if search["id"] == search_id:
+            return search
+    return None
+
+def delete_search(search_id):
+    """Delete a saved search"""
+    if not hasattr(save_search_to_memory, "searches"):
+        return False
+    
+    save_search_to_memory.searches = [
+        search for search in save_search_to_memory.searches 
+        if search["id"] != search_id
+    ]
+    return True
+
 
 # =============================
 # Lambda Entry Point
@@ -176,13 +221,17 @@ def handle_step_1(body):
                 "funding_instrument": project.get('fundingInstrumentType', 'N/A'),
                 "category": project.get('categoryOfFundingActivity', 'N/A')
             })
+
+        # Save the search (step 1 only)
+        search_id = save_search_to_memory(query_text, simplified_grants)
         
         return create_success_response({
             "step": "1",
             "grants": simplified_grants,
             "total_found": len(projects),
             "message": f"Found {len(projects)} grants for '{query_text}'. Now provide your problem and solution descriptions.",
-            "query": query_text
+            "query": query_text,
+            "search_id": search_id  # Include search_id for step 2
         })
         
     except Exception as e:
@@ -195,6 +244,7 @@ def handle_step_2(body):
         problem_description = body.get("problem", "")
         solution_description = body.get("solution", "")
         grants = body.get("grants", [])
+        search_id = body.get("search_id")  # Get search_id from step 1
         
         if not problem_description or not solution_description:
             return create_error_response("Both problem and solution descriptions are required for step 2")
@@ -240,6 +290,16 @@ def handle_step_2(body):
                 Format your response with clear sections for each of the 3 recommendations."""
 
         claude_response = query_claude(prompt, max_tokens=2000)
+
+        # Update the saved search with step 2 data
+        if search_id and hasattr(save_search_to_memory, "searches"):
+            for search in save_search_to_memory.searches:
+                if search["id"] == search_id:
+                    search["problem_statement"] = problem_description
+                    search["solution_description"] = solution_description
+                    search["claude_response"] = claude_response
+                    search["analysis_completed"] = True
+                    break
         
         return create_success_response({
             "step": "2",
