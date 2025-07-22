@@ -2,8 +2,12 @@ import urllib.request
 import urllib.parse
 import boto3
 import json
+from selenium import webdriver
+from bs4 import BeautifulSoup
 
 # adding actual grant information + links? to claude output not just raw ai text
+
+#also fixing the grants gov api calls
 
 # =============================
 # STEP 1: Query Grants.gov API
@@ -47,6 +51,34 @@ def fetch_grantsgov_projects(query_text, limit=30):
         raise Exception(f"Grants.gov API error: {e.code} - {e.reason}")
     except Exception as e:
         raise Exception(f"Error fetching grants: {str(e)}")
+
+def fetch_grant_summary(opp_id):
+    url = f"https://www.grants.gov/search-results-detail/{opp_id}"
+
+    try:
+        options = webdriver.ChromeOptions()
+        options.add_argument("--headless")
+        driver = webdriver.Chrome(options=options)
+
+        driver.get(url)
+        driver.implicitly_wait(5)
+
+        rendered_html = driver.page_source
+        driver.quit()
+
+        soup = BeautifulSoup(rendered_html, 'html.parser')
+        tds = soup.select('td[data-v-f8e12040]')
+
+        for i, td in enumerate(tds):
+            if td.get_text(strip=True) == "Description:":
+                if i + 1 < len(tds):
+                    summary_td = tds[i + 1]
+                    return summary_td.get_text(strip=True)
+
+        return "No summary available."
+
+    except Exception:
+        return "No summary available."
 
 # =============================
 # STEP 2: Claude 3 Bedrock Logic
@@ -174,40 +206,38 @@ def handle_step_2(body):
         
         # Format grants for Claude analysis (limit to top 10 for better analysis)
         formatted_grants = "\n".join([
-            f"{i+1}. Title: {grant.get('title', 'N/A')}\n"
-            f"   Agency: {grant.get('agency', 'N/A')}\n"
-            f"   Description: {grant.get('description', 'N/A')[:200]}...\n"
-            f"   Eligibility: {grant.get('eligibility', 'N/A')[:100]}...\n"
-            f"   Funding Type: {grant.get('funding_instrument', 'N/A')}\n"
-            f"   Category: {grant.get('category', 'N/A')}\n"
-            for i, grant in enumerate(grants[:10])  # Limit to 10 for better analysis
+            f"{i+1}. Title: {grant.get('title')}\n"
+                f"   Opportunity ID: {'id'}\n"
+                f"   Agency: {grant.get('agency')} | Status: {grant.get('oppStatus')}\n"
+                f"   Open: {grant.get('openDate')} — Close: {grant.get('closeDate')}\n"
+            for i, grant in enumerate(grants[:30])  # Limit to 10 for better analysis
         ])
         
         prompt = f"""You are an expert grants advisor. I will provide you with:
-1. A problem description
-2. A solution description  
-3. A list of available funding opportunities
+                1. A problem description
+                2. A solution description  
+                3. A list of available funding opportunities
 
-Based on these inputs, analyze and recommend the top 3 most relevant grants.
+                Based on these inputs, analyze and recommend the top 3 most relevant grants.
 
-PROBLEM DESCRIPTION:
-{problem_description}
+                PROBLEM DESCRIPTION:
+                {problem_description}
 
-SOLUTION DESCRIPTION:
-{solution_description}
+                SOLUTION DESCRIPTION:
+                {solution_description}
 
-AVAILABLE FUNDING OPPORTUNITIES:
-{formatted_grants}
+                AVAILABLE FUNDING OPPORTUNITIES:
+                {formatted_grants}
 
-Please analyze these opportunities and provide:
-1. The top 3 most relevant grants for this problem/solution
-2. For each recommendation, explain:
-   - Why this grant is a good match
-   - How the problem/solution aligns with the grant's goals
-   - Key eligibility requirements to note
-   - Any strategic advice for the application
+                Please analyze these opportunities and provide:
+                1. The top 3 most relevant grants for this problem/solution
+                2. For each recommendation, explain:
+                - Why this grant is a good match
+                - How the problem/solution aligns with the grant's goals
+                - Key eligibility requirements to note
+                - Any strategic advice for the application
 
-Format your response with clear sections for each of the 3 recommendations."""
+                Format your response with clear sections for each of the 3 recommendations."""
 
         claude_response = query_claude(prompt, max_tokens=2000)
         

@@ -39,10 +39,11 @@ def fetch_grant_summary(opp_id):
         soup = BeautifulSoup(rendered_html, 'html.parser')
         tds = soup.select('td[data-v-f8e12040]')
 
-        for td in tds:
-            p = td.select_one('p')
-            if p and p.text.startswith('Summary:'):
-                return p.text.replace('Summary: ', '')
+        for i, td in enumerate(tds):
+            if td.get_text(strip=True) == "Description:":
+                if i + 1 < len(tds):
+                    summary_td = tds[i + 1]
+                    return summary_td.get_text(strip=True)
 
         return "No summary available."
 
@@ -129,7 +130,7 @@ def main():
                 f"   Opportunity ID: {opportunity_id}\n"
                 f"   Agency: {proj.get('agencyCode')} | Status: {proj.get('oppStatus')}\n"
                 f"   Open: {proj.get('openDate')} — Close: {proj.get('closeDate')}\n"
-                f"   Summary: {synopsis[:1000]}..."
+                f"   Summary: {synopsis[:1000]}"
             )
 
 if __name__ == "__main__":
