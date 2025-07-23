@@ -5,8 +5,6 @@ import json
 import uuid
 import time
 
-# adding actual grant information + links? to claude output not just raw ai text
-
 # v 2.5 has saved searches logic but no fetch summary
 
 # =============================
