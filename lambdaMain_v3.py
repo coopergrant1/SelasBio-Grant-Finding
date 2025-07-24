@@ -4,10 +4,14 @@ import boto3
 import json
 import uuid
 import time
+from selenium import webdriver
+from bs4 import BeautifulSoup
 
 # adding actual grant information + links? to claude output not just raw ai text
 
 # v 3 has saved searches logic and fetch summary logic
+
+#imports still wrong i think oops
 
 # =============================
 # STEP 1: Query Grants.gov API
@@ -51,6 +55,34 @@ def fetch_grantsgov_projects(query_text, limit=30):
         raise Exception(f"Grants.gov API error: {e.code} - {e.reason}")
     except Exception as e:
         raise Exception(f"Error fetching grants: {str(e)}")
+    
+def fetch_grant_summary(opp_id):
+    url = f"https://www.grants.gov/search-results-detail/{opp_id}"
+
+    try:
+        options = webdriver.ChromeOptions()
+        options.add_argument("--headless")
+        driver = webdriver.Chrome(options=options)
+
+        driver.get(url)
+        driver.implicitly_wait(5)
+
+        rendered_html = driver.page_source
+        driver.quit()
+
+        soup = BeautifulSoup(rendered_html, 'html.parser')
+        tds = soup.select('td[data-v-f8e12040]')
+
+        for i, td in enumerate(tds):
+            if td.get_text(strip=True) == "Description:":
+                if i + 1 < len(tds):
+                    summary_td = tds[i + 1]
+                    return summary_td.get_text(strip=True)
+
+        return "No summary available."
+
+    except Exception:
+        return "No summary available."
 
 # =============================
 # STEP 2: Claude 3 Bedrock Logic
@@ -264,16 +296,14 @@ def handle_step_1(body):
         print(f"Retrieved {len(projects)} opportunities.")
         
         # Return simplified grant data for step 2
+        # UPDATE LATER ========================
         simplified_grants = []
-        for i, project in enumerate(projects):
+        for project in projects:
             simplified_grants.append({
-                "id": i,
+                "id": project.get('id', 'N/A'),
                 "title": project.get('title', 'N/A'),
                 "agency": project.get('agency', 'N/A'),
-                "description": project.get('description', 'N/A'),
-                "eligibility": project.get('eligibilityInformation', 'N/A'),
-                "funding_instrument": project.get('fundingInstrumentType', 'N/A'),
-                "category": project.get('categoryOfFundingActivity', 'N/A')
+                "status": project.get('oppStatus', 'N/A'),
             })
 
         # Save the search (step 1 only)
