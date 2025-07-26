@@ -293,17 +293,22 @@ def handle_step_1(body):
                 "query": query_text
             })
         
-        print(f"Retrieved {len(projects)} opportunities.")
+        print(f"Retrieved {len(projects)} opportunities. Fetching summaries...")
         
         # Return simplified grant data for step 2
-        # UPDATE LATER ========================
         simplified_grants = []
         for project in projects:
+            opp_id = project.get('id', 'N/A')
+            summary = fetch_grant_summary(opp_id)
+
             simplified_grants.append({
-                "id": project.get('id', 'N/A'),
+                "id": opp_id,
                 "title": project.get('title', 'N/A'),
                 "agency": project.get('agency', 'N/A'),
                 "status": project.get('oppStatus', 'N/A'),
+                "openDate": project.get('openDate', 'N/A'),
+                "closeDate": project.get('closeDate', 'N/A'),
+                "summary": summary
             })
 
         # Save the search (step 1 only)
@@ -341,11 +346,13 @@ def handle_step_2(body):
         # Format grants for Claude analysis (limit to top 10 for better analysis)
         formatted_grants = "\n".join([
             f"{i+1}. Title: {grant.get('title')}\n"
-                f"   Opportunity ID: {'id'}\n"
-                f"   Agency: {grant.get('agency')} | Status: {grant.get('oppStatus')}\n"
-                f"   Open: {grant.get('openDate')} — Close: {grant.get('closeDate')}\n"
-            for i, grant in enumerate(grants[:30])  # Limit to 10 for better analysis
+            f"   Opportunity ID: {grant.get('id')}\n"
+            f"   Agency: {grant.get('agency')} | Status: {grant.get('status')}\n"
+            f"   Open: {grant.get('openDate')} — Close: {grant.get('closeDate')}\n"
+            f"   Summary: {grant.get('summary')}\n"
+            for i, grant in enumerate(grants[:30])
         ])
+
         
         prompt = f"""You are an expert grants advisor. I will provide you with:
                 1. A problem description
