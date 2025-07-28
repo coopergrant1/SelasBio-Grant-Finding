@@ -4,7 +4,7 @@ import boto3
 import json
 import uuid
 import time
-from selenium import webdriver
+import requests
 from bs4 import BeautifulSoup
 
 # adding actual grant information + links? to claude output not just raw ai text
@@ -57,18 +57,23 @@ def fetch_grantsgov_projects(query_text, limit=30):
 def fetch_grant_summary(opp_id):
     url = f"https://www.grants.gov/search-results-detail/{opp_id}"
 
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+        'Accept-Language': 'en-US,en;q=0.5',
+        'Accept-Encoding': 'gzip, deflate, br',
+        'Connection': 'keep-alive',
+        'Upgrade-Insecure-Requests': '1',
+    }
+
     try:
-        options = webdriver.ChromeOptions()
-        options.add_argument("--headless")
-        driver = webdriver.Chrome(options=options)
+        # Make request with timeout
+        response = requests.get(url, headers=headers, timeout=10)
+        response.raise_for_status()
 
-        driver.get(url)
-        driver.implicitly_wait(5)
+        # Parse with BeautifulSoup
+        soup = BeautifulSoup(response.content, 'html.parser')
 
-        rendered_html = driver.page_source
-        driver.quit()
-
-        soup = BeautifulSoup(rendered_html, 'html.parser')
         tds = soup.select('td[data-v-f8e12040]')
 
         for i, td in enumerate(tds):
