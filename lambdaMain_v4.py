@@ -7,9 +7,7 @@ import time
 import requests
 from bs4 import BeautifulSoup
 
-# adding actual grant information + links? to claude output not just raw ai text
-
-# 3.5 changing fetch summary method to actually work in lambda
+# v4: FINALLY adding actual grant information + links? to claude output not just raw ai text
 
 # =============================
 # STEP 1: Query Grants.gov API
