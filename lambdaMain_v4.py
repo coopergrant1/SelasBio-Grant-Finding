@@ -4,10 +4,12 @@ import boto3
 import json
 import uuid
 import time
-import requests
+from selenium import webdriver
 from bs4 import BeautifulSoup
 
 # v4: FINALLY adding actual grant information + links? to claude output not just raw ai text
+
+# still need to sort out selenium w/ lambda but putting that on the backburner for now
 
 # =============================
 # STEP 1: Query Grants.gov API
@@ -55,23 +57,18 @@ def fetch_grantsgov_projects(query_text, limit=30):
 def fetch_grant_summary(opp_id):
     url = f"https://www.grants.gov/search-results-detail/{opp_id}"
 
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.5',
-        'Accept-Encoding': 'gzip, deflate, br',
-        'Connection': 'keep-alive',
-        'Upgrade-Insecure-Requests': '1',
-    }
-
     try:
-        # Make request with timeout
-        response = requests.get(url, headers=headers, timeout=10)
-        response.raise_for_status()
+        options = webdriver.ChromeOptions()
+        options.add_argument("--headless")
+        driver = webdriver.Chrome(options=options)
 
-        # Parse with BeautifulSoup
-        soup = BeautifulSoup(response.content, 'html.parser')
+        driver.get(url)
+        driver.implicitly_wait(5)
 
+        rendered_html = driver.page_source
+        driver.quit()
+
+        soup = BeautifulSoup(rendered_html, 'html.parser')
         tds = soup.select('td[data-v-f8e12040]')
 
         for i, td in enumerate(tds):
@@ -115,6 +112,57 @@ def query_claude(prompt_text, region="us-east-2", max_tokens=1500):
     except Exception as e:
         print(f"Error querying Claude: {str(e)}")
         return f"Error: {str(e)}"
+    
+def parse_claude_recommendations(claude_response, original_grants):
+    """Parse Claude's structured response into grant recommendations"""
+    try:
+        recommendations = []
+        grants_dict = {grant['id']: grant for grant in original_grants}
+        
+        # Split response into sections
+        sections = claude_response.split('GRANT_')
+        
+        for section in sections[1:]:  # Skip first empty section
+            try:
+                lines = section.strip().split('\n')
+                if len(lines) < 2:
+                    continue
+                
+                # Extract opportunity ID from first line
+                first_line = lines[0].strip()
+                if ':' in first_line:
+                    opp_id = first_line.split(':', 1)[1].strip()
+                else:
+                    continue
+                
+                # Extract summary from SUMMARY: line
+                summary = ""
+                for line in lines[1:]:
+                    if line.strip().startswith('SUMMARY:'):
+                        summary = line.split('SUMMARY:', 1)[1].strip()
+                        break
+                
+                # Find matching grant data
+                if opp_id in grants_dict:
+                    grant_data = grants_dict[opp_id].copy()
+                    grant_data['claude_summary'] = summary
+                    grant_data['grant_url'] = f"https://www.grants.gov/search-results-detail/{opp_id}"
+                    recommendations.append(grant_data)
+                
+            except Exception as e:
+                print(f"Error parsing grant section: {str(e)}")
+                continue
+        
+        # If we got fewer than expected, log it but continue
+        if len(recommendations) < 5:
+            print(f"Warning: Only parsed {len(recommendations)} recommendations from Claude response")
+        
+        return recommendations[:5]  # Ensure max 5 recommendations
+        
+    except Exception as e:
+        print(f"Error parsing Claude recommendations: {str(e)}")
+        # Return empty list as fallback
+        return []
     
 # =============================
 # STEP 3: Saved Search Logic
@@ -343,11 +391,11 @@ def handle_step_2(body):
             return create_error_response("No grants data provided for matching")
         
         print(f"Step 2: Matching {len(grants)} grants to problem/solution")
-        
-        # Format grants for Claude analysis (limit to top 10 for better analysis)
+
+        # Format grants for Claude analysis (limit to top 30 for better analysis)
         formatted_grants = "\n".join([
-            f"{i+1}. Title: {grant.get('title')}\n"
-            f"   Opportunity ID: {grant.get('id')}\n"
+            f"{i+1}. Opportunity ID: {grant.get('id')}\n"
+            f"   Title: {grant.get('title')}\n"
             f"   Agency: {grant.get('agency')} | Status: {grant.get('status')}\n"
             f"   Open: {grant.get('openDate')} — Close: {grant.get('closeDate')}\n"
             f"   Summary: {grant.get('summary')}\n"
@@ -355,12 +403,7 @@ def handle_step_2(body):
         ])
 
         
-        prompt = f"""You are an expert grants advisor. I will provide you with:
-                1. A problem description
-                2. A solution description  
-                3. A list of available funding opportunities
-
-                Based on these inputs, analyze and recommend the top 3 most relevant grants.
+        prompt = f"""You are an expert grants advisor. Analyze the following problem/solution against available funding opportunities and return EXACTLY the top 5 most relevant grants.
 
                 PROBLEM DESCRIPTION:
                 {problem_description}
@@ -371,17 +414,29 @@ def handle_step_2(body):
                 AVAILABLE FUNDING OPPORTUNITIES:
                 {formatted_grants}
 
-                Please analyze these opportunities and provide:
-                1. The top 3 most relevant grants for this problem/solution
-                2. For each recommendation, explain:
-                - Why this grant is a good match
-                - How the problem/solution aligns with the grant's goals
-                - Key eligibility requirements to note
-                - Any strategic advice for the application
+                CRITICAL: You must respond in EXACTLY this format for each of the top 5 grants:
 
-                Format your response with clear sections for each of the 3 recommendations."""
+                GRANT_1: [OPPORTUNITY_ID]
+                SUMMARY: [One paragraph explaining why this grant matches the problem/solution, including key alignment points and strategic advice]
+
+                GRANT_2: [OPPORTUNITY_ID]
+                SUMMARY: [One paragraph explaining why this grant matches the problem/solution, including key alignment points and strategic advice]
+
+                GRANT_3: [OPPORTUNITY_ID]
+                SUMMARY: [One paragraph explaining why this grant matches the problem/solution, including key alignment points and strategic advice]
+
+                GRANT_4: [OPPORTUNITY_ID]
+                SUMMARY: [One paragraph explaining why this grant matches the problem/solution, including key alignment points and strategic advice]
+
+                GRANT_5: [OPPORTUNITY_ID]
+                SUMMARY: [One paragraph explaining why this grant matches the problem/solution, including key alignment points and strategic advice]
+
+                Use the exact Opportunity IDs from the list above. Do not add any other text or formatting."""
 
         claude_response = query_claude(prompt, max_tokens=2000)
+
+        # Parse Claude's structured response
+        parsed_recommendations = parse_claude_recommendations(claude_response, grants)
 
         # Update the saved search with step 2 data
         if search_id and hasattr(save_search_to_memory, "searches"):
@@ -390,14 +445,15 @@ def handle_step_2(body):
                     search["problem_statement"] = problem_description
                     search["solution_description"] = solution_description
                     search["claude_response"] = claude_response
+                    search["parsed_recommendations"] = parsed_recommendations
                     search["analysis_completed"] = True
                     break
         
         return create_success_response({
             "step": "2",
-            "claude_response": claude_response,
+            "recommendations": parsed_recommendations,
             "total_analyzed": len(grants),
-            "message": "Claude's analysis of your problem/solution match:"
+            "message": "Claude's top grant recommendations for your project:"
         })
         
     except Exception as e:
