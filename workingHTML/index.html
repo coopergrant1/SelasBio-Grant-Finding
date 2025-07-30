@@ -731,12 +731,71 @@
                     throw new Error(data.error);
                 }
                 
-                // Display Claude's analysis
+                // Display structured recommendations
                 loadingSection.style.display = 'none';
                 resultsSection.style.display = 'block';
                 
                 document.getElementById('resultsTitle').textContent = 'AI Grant Recommendations';
                 document.getElementById('resultsSubtitle').textContent = 'Claude\'s Analysis:';
+
+                // Build recommendations HTML
+                const recommendations = data.recommendations || [];
+                let recommendationsHTML = '';
+                
+                if (recommendations.length > 0) {
+                    recommendationsHTML = '<div class="recommendations-container">';
+                    
+                    recommendations.forEach((grant, index) => {
+                        recommendationsHTML += `
+                            <div class="grant-card">
+                                <div class="grant-header">
+                                    <div class="grant-title">${grant.title || 'N/A'}</div>
+                                    <div class="grant-id">#${index + 1} - ${grant.id || 'N/A'}</div>
+                                </div>
+                                
+                                <div class="grant-info">
+                                    <div class="grant-info-item">
+                                        <span class="grant-info-label">Agency:</span> ${grant.agency || 'N/A'}
+                                    </div>
+                                    <div class="grant-info-item">
+                                        <span class="grant-info-label">Status:</span> ${grant.status || 'N/A'}
+                                    </div>
+                                    <div class="grant-info-item">
+                                        <span class="grant-info-label">Open Date:</span> ${grant.openDate || 'N/A'}
+                                    </div>
+                                    <div class="grant-info-item">
+                                        <span class="grant-info-label">Close Date:</span> ${grant.closeDate || 'N/A'}
+                                    </div>
+                                </div>
+                                
+                                ${grant.summary ? `
+                                    <div class="grant-summary">
+                                        <h4>Grant Description:</h4>
+                                        <p>${grant.summary}</p>
+                                    </div>
+                                ` : ''}
+                                
+                                ${grant.claude_summary ? `
+                                    <div class="claude-analysis">
+                                        <h4>🤖 AI Analysis:</h4>
+                                        <p>${grant.claude_summary}</p>
+                                    </div>
+                                ` : ''}
+                                
+                                <div class="grant-actions">
+                                    <a href="${grant.grant_url || '#'}" target="_blank" class="grant-link">
+                                        View Full Grant Details →
+                                    </a>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    
+                    recommendationsHTML += '</div>';
+                } else {
+                    recommendationsHTML = '<div class="no-recommendations">No recommendations could be generated. Please try rephrasing your problem and solution descriptions.</div>';
+                }
+
                 document.getElementById('resultsText').textContent = data.claude_response || 'No recommendations available.';
                 document.getElementById('resultsMeta').textContent = `Analyzed ${data.total_analyzed} grants for your project`;
                 
