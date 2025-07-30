@@ -496,6 +496,49 @@
                 text-align: center;
             }
         }
+
+        /* Override results-text formatting when displaying recommendations */
+        .results-text .recommendations-container {
+            white-space: normal !important;
+            line-height: normal !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+
+        .results-text .grant-card {
+            white-space: normal !important;
+            margin: 0 0 20px 0 !important;
+            padding: 25px !important;
+            line-height: normal !important;
+        }
+
+        .results-text .grant-card * {
+            white-space: normal !important;
+            line-height: inherit !important;
+        }
+
+        /* Ensure proper spacing for grant card elements */
+        .grant-card p {
+            margin: 0 !important;
+            line-height: 1.6 !important;
+        }
+
+        .grant-card h4 {
+            margin: 0 0 8px 0 !important;
+            line-height: 1.4 !important;
+        }
+
+        .grant-info {
+            margin: 15px 0 !important;
+        }
+
+        .grant-summary, .claude-analysis {
+            margin: 15px 0 !important;
+        }
+
+        .grant-actions {
+            margin: 15px 0 0 0 !important;
+        }
     </style>
 </head>
 <body>
