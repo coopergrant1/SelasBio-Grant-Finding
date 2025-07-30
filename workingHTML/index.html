@@ -735,8 +735,8 @@
                 loadingSection.style.display = 'none';
                 resultsSection.style.display = 'block';
                 
-                document.getElementById('resultsTitle').textContent = 'AI Grant Recommendations';
-                document.getElementById('resultsSubtitle').textContent = 'Claude\'s Analysis:';
+                document.getElementById('resultsTitle').textContent = 'Top Grant Recommendations';
+                document.getElementById('resultsSubtitle').textContent = 'AI-Powered Analysis Results:';
 
                 // Build recommendations HTML
                 const recommendations = data.recommendations || [];
@@ -796,8 +796,8 @@
                     recommendationsHTML = '<div class="no-recommendations">No recommendations could be generated. Please try rephrasing your problem and solution descriptions.</div>';
                 }
 
-                document.getElementById('resultsText').textContent = data.claude_response || 'No recommendations available.';
-                document.getElementById('resultsMeta').textContent = `Analyzed ${data.total_analyzed} grants for your project`;
+                document.getElementById('resultsText').innerHTML = recommendationsHTML;
+                document.getElementById('resultsMeta').textContent = `Found ${recommendations.length} recommended grants from ${data.total_analyzed} analyzed opportunities`;
                 
             } catch (error) {
                 console.error('Error:', error);
